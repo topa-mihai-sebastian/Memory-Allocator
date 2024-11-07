@@ -22,20 +22,18 @@ static struct block_meta *heap_end;
 void preallocate_heap(void)
 {
     if (initialized == 0) {
-        // Use mmap instead of sbrk
-        heap_base = (struct block_meta *)mmap(NULL, HEAP_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        DIE(heap_base == MAP_FAILED, "mmap");
+        heap_base = (struct block_meta *)sbrk(HEAP_SIZE);
+        DIE(heap_base == (void *)-1, "sbrk");
 
-        // Set heap_end to the end of the allocated region
+        // setez heap_end la final
         heap_end = (struct block_meta *)((char *)heap_base + HEAP_SIZE);
 
-        // Initialize the first block_meta
-        heap_base->size = ALIGN(HEAP_SIZE - META_SIZE); // Ensure alignment
+        // first meta block
+        heap_base->size = ALIGN(HEAP_SIZE - META_SIZE); // asigură alinierea
         heap_base->next = NULL;
         heap_base->prev = NULL;
         heap_base->status = STATUS_FREE;
 
-        // Mark heap as initialized
         initialized = 1;
     }
 }
@@ -167,8 +165,35 @@ void *os_calloc(size_t nmemb, size_t size)
 	return ptr;
 }
 
-void *os_realloc(void *ptr, size_t size)
-{
-	/* TODO: Implement os_realloc */
-	return NULL;
+void *os_realloc(void *ptr, size_t size) {
+    if (!ptr) {
+        return os_malloc(size);
+    }
+
+    size = ALIGN(size);
+    struct block_meta *block = (struct block_meta *)ptr - 1;
+
+    // If the new size is smaller than the current size, we can simply return the original pointer
+    if (size <= block->size) {
+        return ptr;
+    }
+
+    // If the next block is free and large enough, we can extend the current block
+    if (block->next && block->next->status == STATUS_FREE && block->size + block->next->size + META_SIZE >= size) {
+        block->size += block->next->size + META_SIZE;
+        block->next = block->next->next;
+        if (block->next) {
+            block->next->prev = block;
+        }
+        return ptr;
+    }
+
+    // Otherwise, we need to allocate a new block and copy the data
+    void *new_ptr = os_malloc(size);
+    if (!new_ptr) {
+        return NULL;
+    }
+    memcpy(new_ptr, ptr, block->size);
+    os_free(ptr);
+    return new_ptr;
 }
