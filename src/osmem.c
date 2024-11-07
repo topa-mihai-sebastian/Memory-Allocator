@@ -101,13 +101,14 @@ struct block_meta *extend_heap(struct block_meta *last, size_t size)
 
 void *os_malloc(size_t size)
 {
-    preallocate_heap();
-    if (heap_base == NULL)
+	if (size <= 0)
         return NULL;
-
+    
     size = ALIGN(size);
-    if (size <= 0)
-        return NULL;
+    preallocate_heap();
+	
+	if(heap_base == NULL)
+		return NULL;
 
     if (size >= MMAP_THRESHOLD) {
         void *yoyo = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
