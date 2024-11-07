@@ -106,7 +106,7 @@ void *os_malloc(size_t size)
     
     size = ALIGN(size);
     preallocate_heap();
-	
+
 	if(heap_base == NULL)
 		return NULL;
 
@@ -167,11 +167,11 @@ void *os_calloc(size_t nmemb, size_t size)
 }
 
 void *os_realloc(void *ptr, size_t size) {
+	size = ALIGN(size);
     if (!ptr) {
         return os_malloc(size);
     }
 
-    size = ALIGN(size);
     struct block_meta *block = (struct block_meta *)ptr - 1;
 
     // If the new size is smaller than the current size, we can simply return the original pointer
