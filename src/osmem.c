@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <string.h>
 
 #define HEAP_SIZE (128 * 1024) // 128KB
 #define META_SIZE sizeof(struct block_meta)
@@ -156,8 +157,14 @@ void os_free(void *ptr) {
 
 void *os_calloc(size_t nmemb, size_t size)
 {
-	/* TODO: Implement os_calloc */
-	return NULL;
+    size_t total_size = nmemb * size;
+
+	total_size = ALIGN(total_size);
+    void *ptr = os_malloc(total_size);
+    
+	if (ptr)
+        memset(ptr, 0, total_size);
+	return ptr;
 }
 
 void *os_realloc(void *ptr, size_t size)
