@@ -22,20 +22,20 @@ static struct block_meta *heap_end;
 void preallocate_heap(void)
 {
     if (initialized == 0) {
-        // Alocă HEAP_SIZE spațiu folosind sbrk
-        heap_base = (struct block_meta *)sbrk(HEAP_SIZE);
-        DIE(heap_base == (void *)-1, "sbrk");
+        // Use mmap instead of sbrk
+        heap_base = (struct block_meta *)mmap(NULL, HEAP_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        DIE(heap_base == MAP_FAILED, "mmap");
 
-        // Setează heap_end la finalul zonei alocate
+        // Set heap_end to the end of the allocated region
         heap_end = (struct block_meta *)((char *)heap_base + HEAP_SIZE);
 
-        // Inițializează primul bloc_meta
-        heap_base->size = ALIGN(HEAP_SIZE - META_SIZE); // asigură alinierea
+        // Initialize the first block_meta
+        heap_base->size = ALIGN(HEAP_SIZE - META_SIZE); // Ensure alignment
         heap_base->next = NULL;
         heap_base->prev = NULL;
         heap_base->status = STATUS_FREE;
 
-        // Marchează heap-ul ca fiind inițializat
+        // Mark heap as initialized
         initialized = 1;
     }
 }
