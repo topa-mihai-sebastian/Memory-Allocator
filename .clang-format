@@ -1,14 +1,13 @@
-BasedOnStyle: LLVM
-IndentWidth: 4
-ColumnLimit: 0
-BraceWrapping:
-  AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterFunction: true
-  AfterNamespace: true
-  AfterStruct: true
-  AfterUnion: true
-  BeforeCatch: true
-  BeforeElse: true
-  IndentBraces: false
+# Utilizează tab-uri în loc de spații
+UseTab: ForIndentation  # Utilizează tab-uri pentru indentare, nu spații
+IndentWidth: 4          # Dimensiunea indentării (4 caractere pentru un tab)
+
+# Stilul acoladelor pe linie nouă
+BreakBeforeBraces: Allman  # Pune acoladele `{` pe o linie nouă (stilul Allman)
+
+# Alte setări opționale
+TabWidth: 4               # Dimensiunea unui tab (tab-ul va fi de 4 caractere de lungime)
+ColumnLimit: 80           # Limita de coloană pentru lățimea maximă a liniei
+
+# Permite plasarea `else` pe aceeași linie cu acolada de închidere `}`
+AllowShortIfStatementsOnASingleLine: false
