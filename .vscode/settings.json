@@ -6,7 +6,8 @@
 		"array": "c",
 		"string_view": "c",
 		"initializer_list": "c",
-		"utility": "c"
+		"utility": "c",
+		"osmem.h": "c"
 	},
     "editor.formatOnSave": false
 }

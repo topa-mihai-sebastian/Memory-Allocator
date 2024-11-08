@@ -15,27 +15,30 @@
 #define ALIGNMENT 8 // must be a power of 2
 #define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))
 
-int initialized;
+static int initialized;
 static struct block_meta *heap_base;
 static struct block_meta *heap_end;
 
 void preallocate_heap(void)
 {
-    if (initialized == 0) {
-        heap_base = (struct block_meta *)sbrk(HEAP_SIZE);
-        DIE(heap_base == (void *)-1, "sbrk");
+    if (initialized)  // Evită alocarea multiplă a heap-ului
+        return;
 
-        // setez heap_end la final
-        heap_end = (struct block_meta *)((char *)heap_base + HEAP_SIZE);
+    // Alocă spațiu pentru heap și verifică dacă s-a reușit alocarea
+    heap_base = (struct block_meta *)sbrk(HEAP_SIZE);
+    DIE(heap_base == (void *)-1, "sbrk failed");
 
-        // first meta block
-        heap_base->size = ALIGN(HEAP_SIZE - META_SIZE); // asigură alinierea
-        heap_base->next = NULL;
-        heap_base->prev = NULL;
-        heap_base->status = STATUS_FREE;
+    // Setează `heap_end` la adresa finală a heap-ului
+    heap_end = (struct block_meta *)((char *)heap_base + HEAP_SIZE);
 
-        initialized = 1;
-    }
+    // Configurarea blocului inițial de metadate
+    heap_base->size = ALIGN(HEAP_SIZE - META_SIZE);  // Dimensiunea blocului, aliniată
+    heap_base->next = NULL;
+    heap_base->prev = NULL;
+    heap_base->status = STATUS_FREE;  // Marcat ca bloc liber
+
+    // Marchez heap-ul ca fiind inițializat
+    initialized = 1;
 }
 
 void *find_free_block(struct block_meta **last, size_t size)
@@ -64,13 +67,15 @@ void *find_free_block(struct block_meta **last, size_t size)
 
 void split_block(struct block_meta *block, size_t size)
 {
+	if(block == NULL || size <=0)
+		return;
     size = ALIGN(size);
     size_t min_size = ALIGN(sizeof(struct block_meta) + 1);
 
 	if(block->size >= size + META_SIZE + min_size)
 	{
 		struct block_meta *new_block = (struct block_meta *)((char *)block + sizeof(struct block_meta) + size);
-		new_block->size = block->size - size - sizeof(struct block_meta);
+		new_block->size = block->size - size - META_SIZE;
 		new_block->prev = block;
 		new_block->next = block->next;
 		new_block->status = STATUS_FREE;
@@ -87,6 +92,7 @@ struct block_meta *extend_heap(struct block_meta *last, size_t size)
 {
     size = ALIGN(size); // Ensure aligned size
     struct block_meta *block = (struct block_meta *)sbrk(size + META_SIZE);
+
     DIE(block == (void *)-1, "sbrk");
 
     if (last)
@@ -101,54 +107,66 @@ struct block_meta *extend_heap(struct block_meta *last, size_t size)
 
 void *os_malloc(size_t size)
 {
-	if (size <= 0)
+    if (size <= 0)
         return NULL;
-    
+
+    // Aliniem dimensiunea cerută
     size = ALIGN(size);
+
+    // Inițializăm heap-ul dacă nu este deja inițializat
     preallocate_heap();
+    if (heap_base == NULL)  // Verificare că heap-ul a fost alocat corect
+        return NULL;
 
-	if(heap_base == NULL)
-		return NULL;
-
+    // Alocăm cu mmap dacă dimensiunea este mai mare decât pragul specificat
     if (size >= MMAP_THRESHOLD) {
-        void *yoyo = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-        DIE(yoyo == MAP_FAILED, "mmap");
-        struct block_meta *block = (struct block_meta *)yoyo;
+        void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        DIE(mmap_ptr == MAP_FAILED, "mmap");
 
+        struct block_meta *block = (struct block_meta *)mmap_ptr;
         block->size = size;
         block->next = NULL;
+        block->prev = NULL;
         block->status = STATUS_ALLOC;
-        return (block + 1);
+
+        return (block + 1);  // Returnăm adresa de după metadatele blocului
     }
 
+    // Găsim un bloc liber în heap
     struct block_meta *last = heap_base;
     struct block_meta *block = find_free_block(&last, size);
 
-    if (!block) { // Failed to find free block
+    if (!block) {
+        // Dacă nu s-a găsit un bloc liber, extindem heap-ul
         block = extend_heap(last, size);
         if (!block)
             return NULL;
-    } else { // Found free block
-        // Split the block if it's too large
+    } else {
+        // Dacă am găsit un bloc liber, îl divizăm dacă e prea mare
         if (block->size >= size + META_SIZE + ALIGNMENT)
             split_block(block, size);
+        
+        // Marcăm blocul ca alocat
         block->status = STATUS_ALLOC;
     }
 
-    return (block + 1);
+    return (block + 1);  // Returnăm adresa de după metadate
 }
 
-void os_free(void *ptr) {
-    if (!ptr) {
+
+void os_free(void *ptr)
+{
+    if (!ptr)
         return;
-    }
 
     struct block_meta *block = (struct block_meta *)ptr - 1;
+
     assert(block->status == STATUS_ALLOC);
     block->status = STATUS_FREE;
 
     // Use munmap for large allocations
-    if (block->size + META_SIZE >= MMAP_THRESHOLD) {
+    if (block->size + META_SIZE >= MMAP_THRESHOLD)
+	{
         int result = munmap(block, block->size + META_SIZE);
         DIE(result == -1, "munmap");
     }
