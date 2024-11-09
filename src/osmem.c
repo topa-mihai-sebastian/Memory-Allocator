@@ -132,6 +132,7 @@ void *os_malloc(size_t size)
 		block->next = NULL;
 		block->prev = NULL;
 		block->status = STATUS_MAPPED;
+		initialized = 1; //sigabrt
 
 		return (block + 1);
 	}
