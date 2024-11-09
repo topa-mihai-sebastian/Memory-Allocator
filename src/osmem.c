@@ -72,7 +72,7 @@ void split_block(struct block_meta *block, size_t size)
 	if (block == NULL || size <= 0)
 		return;
 	size = ALIGN(size);
-	size_t min_size = ALIGN(sizeof(struct block_meta) + 1);
+	size_t min_size = sizeof(struct block_meta) + 1;
 
 	if (block->size >= size + META_SIZE + min_size)
 	{
@@ -103,7 +103,8 @@ struct block_meta *extend_heap(struct block_meta *last, size_t size)
 	{
 		last->next = block;
 		block->prev = last;
-	} else
+	}
+	else
 	{
 		block->prev = NULL;
 		heap_base = block;
@@ -121,18 +122,17 @@ void *os_malloc(size_t size)
 	if (size <= 0)
 		return NULL;
 
-	// Aliniem dimensiunea cerută
+	// Align the requested size
 	size = ALIGN(size);
 
-	// Inițializăm heap-ul dacă nu este deja inițializat
-	preallocate_heap();
-	if (heap_base == NULL) // Verificare că heap-ul a fost alocat corect
-		return NULL;
+	// Get the system's page size
+	size_t page_size = getpagesize();
+	size_t mmap_threshold = page_size;
 
-	// Alocăm cu mmap dacă dimensiunea este mai mare decât pragul specificat
-	if (size >= MMAP_THRESHOLD)
+	if (size >= mmap_threshold)
 	{
-		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE,
+		                      MAP_PRIVATE | MAP_ANON, -1, 0);
 		DIE(mmap_ptr == MAP_FAILED, "mmap");
 
 		struct block_meta *block = (struct block_meta *)mmap_ptr;
@@ -141,31 +141,31 @@ void *os_malloc(size_t size)
 		block->prev = NULL;
 		block->status = STATUS_ALLOC;
 
-		return (block + 1); // Returnăm adresa de după metadatele blocului
+		return (block + 1); // Return the address after the block metadata
 	}
 
-	// Găsim un bloc liber în heap
+	// Find a free block in the heap
 	struct block_meta *last = heap_base;
 	struct block_meta *block = find_free_block(&last, size);
 
 	if (!block)
 	{
-		// Dacă nu s-a găsit un bloc liber, extindem heap-ul
+		// If no free block is found, extend the heap
 		block = extend_heap(last, size);
 		if (!block)
 			return NULL;
 	}
 	else
 	{
-		// Dacă am găsit un bloc liber, îl divizăm dacă e prea mare
+		// If a free block is found, split it if it's too large
 		if (block->size >= size + META_SIZE + ALIGNMENT)
 			split_block(block, size);
 
-		// Marcăm blocul ca alocat
+		// Mark the block as allocated
 		block->status = STATUS_ALLOC;
 	}
 
-	return (block + 1); // Returnăm adresa de după metadate
+	return (block + 1); // Return the address after the block metadata
 }
 
 void os_free(void *ptr)
@@ -175,14 +175,39 @@ void os_free(void *ptr)
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
 
-	assert(block->status == STATUS_ALLOC);
-	block->status = STATUS_FREE;
+	assert(block->status == STATUS_ALLOC || block->status == STATUS_MAPPED);
 
 	// Use munmap for large allocations
-	if (block->size + META_SIZE >= MMAP_THRESHOLD)
+	if (block->status == STATUS_MAPPED)
 	{
 		int result = munmap(block, block->size + META_SIZE);
 		DIE(result == -1, "munmap");
+	}
+	else
+	{
+		block->status = STATUS_FREE;
+
+		// Coalesce with next block if it's free
+		if (block->next && block->next->status == STATUS_FREE)
+		{
+			block->size += block->next->size;
+			block->next = block->next->next;
+			if (block->next)
+			{
+				block->next->prev = block;
+			}
+		}
+
+		// Coalesce with previous block if it's free
+		if (block->prev && block->prev->status == STATUS_FREE)
+		{
+			block->prev->size += block->size;
+			block->prev->next = block->next;
+			if (block->next)
+			{
+				block->next->prev = block->prev;
+			}
+		}
 	}
 }
 
@@ -190,7 +215,6 @@ void *os_calloc(size_t nmemb, size_t size)
 {
 	size_t total_size = nmemb * size;
 
-	// total_size = ALIGN(total_size);
 	void *ptr = os_malloc(total_size);
 
 	if (ptr)
@@ -200,10 +224,10 @@ void *os_calloc(size_t nmemb, size_t size)
 
 void *os_realloc(void *ptr, size_t size)
 {
-	size = ALIGN(size);
+	/*size = ALIGN(size);
 	if (!ptr)
 	{
-		return os_malloc(size);
+	    return os_malloc(size);
 	}
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
@@ -211,29 +235,30 @@ void *os_realloc(void *ptr, size_t size)
 	// If the new size is smaller than the current size, we can simply return
 	// the original pointer
 	if (size <= block->size)
-		return ptr;
+	    return ptr;
 
 	// If the next block is free and large enough, we can extend the current
 	// block
 	if (block->next && block->next->status == STATUS_FREE &&
 	    block->size + block->next->size + META_SIZE >= size)
 	{
-		block->size += block->next->size + META_SIZE;
-		block->next = block->next->next;
-		if (block->next)
-		{
-			block->next->prev = block;
-		}
-		return ptr;
+	    block->size += block->next->size + META_SIZE;
+	    block->next = block->next->next;
+	    if (block->next)
+	    {
+	        block->next->prev = block;
+	    }
+	    return ptr;
 	}
 
 	// Otherwise, we need to allocate a new block and copy the data
 	void *new_ptr = os_malloc(size);
 	if (!new_ptr)
 	{
-		return NULL;
+	    return NULL;
 	}
 	memcpy(new_ptr, ptr, block->size);
 	os_free(ptr);
-	return new_ptr;
+	*/
+	return NULL;
 }
