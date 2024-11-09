@@ -76,6 +76,18 @@ void split_block(struct block_meta *block, size_t size)
 
 	if (block->size >= size + META_SIZE + 8)
 	{
+		if(!block->next)
+		{
+			struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
+			new_block->size = block->size - size - META_SIZE;
+			new_block->prev = block;
+			new_block->next = NULL;
+			new_block->status = STATUS_FREE;
+
+			block->size = size;
+			block->next = new_block;
+		} else
+		{
 		struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
 		new_block->size = block->size - size - META_SIZE;
 		new_block->prev = block;
@@ -87,6 +99,7 @@ void split_block(struct block_meta *block, size_t size)
 
 		block->size = size;
 		block->next = new_block;
+		}
 	}
 }
 
