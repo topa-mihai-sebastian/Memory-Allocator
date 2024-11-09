@@ -26,6 +26,8 @@ void preallocate_heap(void)
 
 	// Alocă spațiu pentru heap și verifică dacă s-a reușit alocarea
 	heap_base = (struct block_meta *)sbrk(0);
+
+	void *init_heap = sbrk(MMAP_THRESHOLD);
 	DIE(heap_base == (void *)-1, "sbrk failed");
 
 	// Configurarea blocului inițial de metadate
