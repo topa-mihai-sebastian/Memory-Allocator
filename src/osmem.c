@@ -170,10 +170,9 @@ void os_free(void *ptr)
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
 
-	assert(block->status == STATUS_ALLOC);
-	block->status = STATUS_FREE;
-
-	if (block->status == STATUS_MAPPED)
+	if(block->status == STATUS_ALLOC)
+		block->status = STATUS_FREE;
+	else if (block->status == STATUS_MAPPED)
 	{
 		int result = munmap(block, block->size + META_SIZE);
 		DIE(result == -1, "munmap");
