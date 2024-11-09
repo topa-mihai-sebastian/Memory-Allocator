@@ -21,15 +21,15 @@ static struct block_meta *heap_base;
 
 void preallocate_heap(void)
 {
-	if (initialized) // Evită alocarea multiplă a heap-ului
+	if (initialized == 1) // Evită alocarea multiplă a heap-ului
 		return;
 
 	// Alocă spațiu pentru heap și verifică dacă s-a reușit alocarea
 	heap_base = (struct block_meta *)sbrk(0);
 
-	void *init_heap = sbrk(MMAP_THRESHOLD);
 	DIE(heap_base == (void *)-1, "sbrk failed");
-
+	void *init_heap = sbrk(MMAP_THRESHOLD);
+	
 	// Configurarea blocului inițial de metadate
 	heap_base->size = ALIGN(HEAP_SIZE - META_SIZE); // Dimensiunea blocului, aliniată
 	heap_base->next = NULL;
@@ -120,10 +120,6 @@ void *os_malloc(size_t size)
 
 	size = ALIGN(size);
 
-	preallocate_heap();
-	if (heap_base == NULL)
-		return NULL;
-
 	if (size + META_SIZE >= MMAP_THRESHOLD)
 	{
 		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -139,6 +135,10 @@ void *os_malloc(size_t size)
 
 		return (block + 1);
 	}
+
+	preallocate_heap();
+	if (heap_base == NULL)
+		return NULL;
 
 	struct block_meta *last = heap_base;
 	struct block_meta *block = find_free_block(&last, size);
