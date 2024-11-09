@@ -144,21 +144,29 @@ void *os_malloc(size_t size)
 
 	if (!block)
 	{
-		block = extend_heap(last, size);
-		if (!block)
-			return NULL;
+		struct block_meta *aux = heap_base;
+		while(aux && aux->next)
+			aux = aux->next;
+		int do_not_extend = 0;
+		if(aux->size < size && aux->status == STATUS_FREE)
+		{
+			size_t additional_size = size - aux->size;
+            struct block_meta *new_block = (struct block_meta *)sbrk(additional_size);
+            
+			DIE(new_block == (void *)-1, "sbrk");
+
+            aux->size += additional_size;
+			do_not_extend = 1;
+		}
+		if(!do_not_extend)
+		{
+			block = extend_heap(last, size);
+			if (!block)
+				return NULL;
+		}
 	}
 	else
 	{
-		if (block->size < size)
-        {
-            // Expand the block if it is too small
-            size_t additional_size = size - block->size;
-            struct block_meta *new_block = (struct block_meta *)sbrk(additional_size);
-            DIE(new_block == (void *)-1, "sbrk");
-
-            block->size += additional_size;
-        }
 		// Dacă am găsit un bloc liber, îl divizăm dacă e prea mare
 		if (block->size >= size + META_SIZE + ALIGNMENT)
 			split_block(block, size);
