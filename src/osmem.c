@@ -124,7 +124,7 @@ void *os_malloc(size_t size)
 	if (heap_base == NULL)
 		return NULL;
 
-	if (size >= MMAP_THRESHOLD)
+	if (size + META_SIZE >= MMAP_THRESHOLD)
 	{
 		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		
