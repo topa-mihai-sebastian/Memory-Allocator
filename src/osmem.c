@@ -58,12 +58,10 @@ void *find_free_block(struct block_meta **last, size_t size)
 
 	while (current)
 	{
-		// Verificăm dacă blocul este liber și are dimensiunea necesară
 		if (current->status == STATUS_FREE && current->size >= size)
 		{
 			break;
 		}
-		// Actualizăm `last` pentru a reține ultimul bloc parcurs
 		*last = current;
 		current = current->next;
 	}
@@ -152,6 +150,15 @@ void *os_malloc(size_t size)
 	}
 	else
 	{
+		if (block->size < size)
+        {
+            // Expand the block if it is too small
+            size_t additional_size = size - block->size;
+            struct block_meta *new_block = (struct block_meta *)sbrk(additional_size);
+            DIE(new_block == (void *)-1, "sbrk");
+
+            block->size += additional_size;
+        }
 		// Dacă am găsit un bloc liber, îl divizăm dacă e prea mare
 		if (block->size >= size + META_SIZE + ALIGNMENT)
 			split_block(block, size);
