@@ -210,10 +210,34 @@ void os_free(void *ptr)
 void *os_calloc(size_t nmemb, size_t size)
 {
 	size_t total_size = nmemb * size;
-
+	void *ptr;
+	struct block_meta *block;
 	// total_size = ALIGN(total_size);
-	void *ptr = os_malloc(total_size);
+	if(total_size >= PAGE_SIZE)
+	{
+		ptr = mmap(NULL, total_size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		DIE(ptr == MAP_FAILED, "mmap");
+		
+		block = (struct block_meta *)ptr;
+		
+		block->size = total_size;
+		block->next = NULL;
+		block->prev = NULL;
+		block->status = STATUS_MAPPED;
+		initialized = 1; //sigabrt
+	}else
+	{
+		ptr = sbrk(total_size + META_SIZE);
+		DIE(ptr == (void *)-1, "sbrk");
+		block = (struct block_meta *)ptr;
 
+		block->size = total_size;
+		block->next = NULL;
+		block->prev = NULL;
+		block->status = STATUS_ALLOC;
+		initialized = 1; //sigabrt
+	}
+	ptr = (void *)(block + 1);
 	if (ptr)
 		memset(ptr, 0, total_size);
 	return ptr;
