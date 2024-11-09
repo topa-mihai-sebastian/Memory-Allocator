@@ -74,7 +74,7 @@ void split_block(struct block_meta *block, size_t size)
 		return;
 	size = ALIGN(size);
 
-	if (block->size >= size + META_SIZE + META_SIZE + 8)
+	if (block->size >= size + META_SIZE + 8)
 	{
 		struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
 		new_block->size = block->size - size - META_SIZE;
