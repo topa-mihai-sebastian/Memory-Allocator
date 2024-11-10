@@ -17,6 +17,7 @@
 #define ALIGN(size) (((size) + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1))
 
 static int initialized;
+static int calloc_mmap;
 static struct block_meta *heap_base;
 
 void preallocate_heap(void)
@@ -138,7 +139,7 @@ void *os_malloc(size_t size)
 
 	size = ALIGN(size);
 
-	if (size + META_SIZE >= MMAP_THRESHOLD)
+	if (size + META_SIZE >= MMAP_THRESHOLD || calloc_mmap == 1)
 	{
 		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
@@ -216,13 +217,19 @@ void os_free(void *ptr)
 
 void *os_calloc(size_t nmemb, size_t size)
 {
+	if (nmemb == 0 || size == 0)
+        return NULL;
+
 	size_t total_size = nmemb * size;
 
-	// total_size = ALIGN(total_size);
-	if(!initialized)
-		preallocate_heap();
-	void *ptr = os_malloc(total_size);
+	total_size = ALIGN(total_size);
 
+	if(total_size >= PAGE_SIZE)
+		calloc_mmap = 1;
+	
+	void *ptr = os_malloc(total_size);
+	
+	calloc_mmap = 0;
 	if (ptr)
 		memset(ptr, 0, total_size);
 	return ptr;
