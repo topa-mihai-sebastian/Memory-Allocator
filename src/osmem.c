@@ -82,8 +82,7 @@ void split_block(struct block_meta *block, size_t size)
 	{
 		if (!block->next)
 		{
-			struct block_meta *new_block =
-			    (struct block_meta *)((char *)block + META_SIZE + size);
+			struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
 			new_block->size = block->size - size - META_SIZE;
 			new_block->prev = block;
 			new_block->next = NULL;
@@ -94,8 +93,7 @@ void split_block(struct block_meta *block, size_t size)
 		}
 		else
 		{
-			struct block_meta *new_block =
-			    (struct block_meta *)((char *)block + META_SIZE + size);
+			struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
 			new_block->size = block->size - size - META_SIZE;
 			new_block->prev = block;
 			new_block->next = block->next;
@@ -141,7 +139,8 @@ void *os_malloc(size_t size)
 
 	if (size + META_SIZE >= MMAP_THRESHOLD || calloc_mmap == 1)
 	{
-		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE,
+		                      MAP_PRIVATE | MAP_ANON, -1, 0);
 
 		DIE(mmap_ptr == MAP_FAILED, "mmap");
 
@@ -172,7 +171,8 @@ void *os_malloc(size_t size)
 		if (aux->size < size && aux->status == STATUS_FREE)
 		{
 			size_t additional_size = size - aux->size;
-			struct block_meta *new_block = (struct block_meta *)sbrk(additional_size);
+			struct block_meta *new_block =
+			    (struct block_meta *)sbrk(additional_size);
 
 			DIE(new_block == (void *)-1, "sbrk");
 
@@ -218,17 +218,17 @@ void os_free(void *ptr)
 void *os_calloc(size_t nmemb, size_t size)
 {
 	if (nmemb == 0 || size == 0)
-        return NULL;
+		return NULL;
 
 	size_t total_size = nmemb * size;
 
 	total_size = ALIGN(total_size);
 
-	if(total_size >= PAGE_SIZE)
+	if (total_size >= PAGE_SIZE)
 		calloc_mmap = 1;
-	
+
 	void *ptr = os_malloc(total_size);
-	
+
 	calloc_mmap = 0;
 	if (ptr)
 		memset(ptr, 0, total_size);
@@ -251,11 +251,10 @@ void *os_realloc(void *ptr, size_t size)
 	if (block->status == STATUS_FREE)
 		return NULL;
 
-	if (block->size >= size)
+	if (block->size >= size + META_SIZE + 8)
 	{
 		// truncate
-		if (block->size >= size + 2 * META_SIZE + 8)
-			split_block(block, size);
+		split_block(block, size);
 		return ptr;
 	}
 	else
