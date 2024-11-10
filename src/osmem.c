@@ -171,8 +171,7 @@ void *os_malloc(size_t size)
 		if (aux->size < size && aux->status == STATUS_FREE)
 		{
 			size_t additional_size = size - aux->size;
-			struct block_meta *new_block =
-			    (struct block_meta *)sbrk(additional_size);
+			struct block_meta *new_block = (struct block_meta *)sbrk(additional_size);
 
 			DIE(new_block == (void *)-1, "sbrk");
 
@@ -188,7 +187,7 @@ void *os_malloc(size_t size)
 	}
 	else
 	{
-		// Dacă am găsit un bloc liber, îl divizăm dacă e prea mare
+		// Dacă am găsit un bloc liber, il divizăm dacă e prea mare
 		if (block->size >= size + META_SIZE + ALIGNMENT)
 			split_block(block, size);
 
@@ -220,6 +219,8 @@ void *os_calloc(size_t nmemb, size_t size)
 	size_t total_size = nmemb * size;
 
 	// total_size = ALIGN(total_size);
+	if(!initialized)
+		preallocate_heap();
 	void *ptr = os_malloc(total_size);
 
 	if (ptr)
@@ -229,55 +230,56 @@ void *os_calloc(size_t nmemb, size_t size)
 
 void *os_realloc(void *ptr, size_t size)
 {
-    if (size <= 0)
-    {
-        os_free(ptr);
-        return NULL;
-    }
+	if (size <= 0)
+	{
+		os_free(ptr);
+		return NULL;
+	}
 
-    if (!ptr)
-        return os_malloc(size);
+	if (!ptr)
+		return os_malloc(size);
 
-    struct block_meta *block = (struct block_meta *)ptr - 1;
+	struct block_meta *block = (struct block_meta *)ptr - 1;
 
-    if (block->status == STATUS_FREE)
-        return NULL;
+	if (block->status == STATUS_FREE)
+		return NULL;
 
-    if (block->size >= size)
-    {
-        // truncate
-        if (block->size >= size + 2 * META_SIZE + 8)
-            split_block(block, size);
-        return ptr;
-    }
-    else
-    {
-        // incerc sa fac expend
-        struct block_meta *next = block->next;
-        while (next && next->status == STATUS_FREE && block->size + META_SIZE + next->size < size)
-        {
-            block->size += META_SIZE + next->size;
-            block->next = next->next;
-            if (block->next)
-                block->next->prev = block;
-            next = block->next;
-        }
+	if (block->size >= size)
+	{
+		// truncate
+		if (block->size >= size + 2 * META_SIZE + 8)
+			split_block(block, size);
+		return ptr;
+	}
+	else
+	{
+		// incerc sa fac expend
+		struct block_meta *next = block->next;
+		while (next && next->status == STATUS_FREE &&
+		       block->size + META_SIZE + next->size < size)
+		{
+			block->size += META_SIZE + next->size;
+			block->next = next->next;
+			if (block->next)
+				block->next->prev = block;
+			next = block->next;
+		}
 		// daca s-a gasit fac alloc
-        if (block->size >= size)
-        {
-            block->status = STATUS_ALLOC;
-            return ptr;
-        }
-        else
-        {
-            // daca nu alloc in alta parte cu os_malloc
-            void *new_ptr = os_malloc(size);
-            if (new_ptr)
-            {
-                memcpy(new_ptr, ptr, block->size);
-                os_free(ptr);
-            }
-            return new_ptr;
-        }
-    }
+		if (block->size >= size)
+		{
+			block->status = STATUS_ALLOC;
+			return ptr;
+		}
+		else
+		{
+			// daca nu alloc in alta parte cu os_malloc
+			void *new_ptr = os_malloc(size);
+			if (new_ptr)
+			{
+				memcpy(new_ptr, ptr, block->size);
+				os_free(ptr);
+			}
+			return new_ptr;
+		}
+	}
 }
