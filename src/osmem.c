@@ -140,8 +140,7 @@ void *os_malloc(size_t size)
 
 	if (size + META_SIZE >= MMAP_THRESHOLD)
 	{
-		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE,
-		                      MAP_PRIVATE | MAP_ANON, -1, 0);
+		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
 		DIE(mmap_ptr == MAP_FAILED, "mmap");
 
@@ -218,40 +217,11 @@ void os_free(void *ptr)
 
 void *os_calloc(size_t nmemb, size_t size)
 {
-	if (nmemb == 0 || size == 0)
-		return NULL;
-
 	size_t total_size = nmemb * size;
-	total_size = ALIGN(total_size);
 
-	void *ptr;
-	struct block_meta *block;
+	// total_size = ALIGN(total_size);
+	void *ptr = os_malloc(total_size);
 
-	if (total_size >= PAGE_SIZE)
-	{
-		ptr = mmap(NULL, total_size + META_SIZE, PROT_READ | PROT_WRITE,
-		           MAP_PRIVATE | MAP_ANON, -1, 0);
-		DIE(ptr == MAP_FAILED, "mmap");
-
-		block = (struct block_meta *)ptr;
-		block->size = total_size;
-		block->next = NULL;
-		block->prev = NULL;
-		block->status = STATUS_MAPPED;
-	}
-	else
-	{
-		ptr = sbrk(total_size + META_SIZE);
-		DIE(ptr == (void *)-1, "sbrk");
-
-		block = (struct block_meta *)ptr;
-		block->size = total_size;
-		block->next = NULL;
-		block->prev = NULL;
-		block->status = STATUS_ALLOC;
-	}
-
-	ptr = (void *)(block + 1); // Point to the memory after the metadata
 	if (ptr)
 		memset(ptr, 0, total_size);
 	return ptr;
@@ -259,5 +229,41 @@ void *os_calloc(size_t nmemb, size_t size)
 
 void *os_realloc(void *ptr, size_t size)
 {
+	/*size = ALIGN(size);
+	if (!ptr)
+	{
+	    return os_malloc(size);
+	}
+
+	struct block_meta *block = (struct block_meta *)ptr - 1;
+
+	// If the new size is smaller than the current size, we can simply return
+	// the original pointer
+	if (size <= block->size)
+	    return ptr;
+
+	// If the next block is free and large enough, we can extend the current
+	// block
+	if (block->next && block->next->status == STATUS_FREE &&
+	    block->size + block->next->size + META_SIZE >= size)
+	{
+	    block->size += block->next->size + META_SIZE;
+	    block->next = block->next->next;
+	    if (block->next)
+	    {
+	        block->next->prev = block;
+	    }
+	    return ptr;
+	}
+
+	// Otherwise, we need to allocate a new block and copy the data
+	void *new_ptr = os_malloc(size);
+	if (!new_ptr)
+	{
+	    return NULL;
+	}
+	memcpy(new_ptr, ptr, block->size);
+	os_free(ptr);
+	*/
 	return NULL;
 }
