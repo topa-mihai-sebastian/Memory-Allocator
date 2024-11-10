@@ -82,7 +82,8 @@ void split_block(struct block_meta *block, size_t size)
 	{
 		if (!block->next)
 		{
-			struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
+			struct block_meta *new_block =
+			    (struct block_meta *)((char *)block + META_SIZE + size);
 			new_block->size = block->size - size - META_SIZE;
 			new_block->prev = block;
 			new_block->next = NULL;
@@ -93,7 +94,8 @@ void split_block(struct block_meta *block, size_t size)
 		}
 		else
 		{
-			struct block_meta *new_block = (struct block_meta *)((char *)block + META_SIZE + size);
+			struct block_meta *new_block =
+			    (struct block_meta *)((char *)block + META_SIZE + size);
 			new_block->size = block->size - size - META_SIZE;
 			new_block->prev = block;
 			new_block->next = block->next;
@@ -242,7 +244,7 @@ void *os_realloc(void *ptr, size_t size)
 		os_free(ptr);
 		return NULL;
 	}
-
+	size = ALIGN(size);
 	if (!ptr)
 		return os_malloc(size);
 
@@ -261,10 +263,9 @@ void *os_realloc(void *ptr, size_t size)
 	{
 		// incerc sa fac expend
 		struct block_meta *next = block->next;
-		while (next && next->status == STATUS_FREE &&
-		       block->size + META_SIZE + next->size < size)
+		while (next && next->status == STATUS_FREE && block->size + META_SIZE + next->size < size)
 		{
-			block->size += META_SIZE + next->size;
+			block->size = block->size + META_SIZE + next->size;
 			block->next = next->next;
 			if (block->next)
 				block->next->prev = block;
