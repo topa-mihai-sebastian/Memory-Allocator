@@ -138,11 +138,13 @@ void *os_malloc(size_t size)
 		block->next = NULL;
 		block->prev = NULL;
 		block->status = STATUS_MAPPED;
-		initialized = 1; // sigabrt
-
+		if(!initialized)
+			initialized = 1; // sigabrt
+		if(calloc_mmap == 1)
+			calloc_mmap = 0;
 		return (block + 1);
 	}
-
+	//this part of the code
 	preallocate_heap();
 	if (heap_base == NULL)
 		return NULL;
@@ -169,6 +171,8 @@ void *os_malloc(size_t size)
 			block = extend_heap(last, size);
 			if (!block)
 				return NULL;
+		} else {
+			block = aux;
 		}
 	} else {
 		// daca am gasit un block si este prea mare ii dam split
@@ -202,12 +206,14 @@ void *os_calloc(size_t nmemb, size_t size)
 {
 	if (nmemb == 0 || size == 0)
 		return NULL;
-
-	size_t total_size = nmemb * size;
-
-	total_size = ALIGN(total_size);
-
-	if (total_size + META_SIZE >= PAGE_SIZE)
+	size_t total_size;
+	if(nmemb == 1) {
+		total_size = nmemb * ALIGN(size);
+	} else {
+		total_size = nmemb * size;
+		total_size = ALIGN(total_size);
+	}
+	if (total_size + META_SIZE > PAGE_SIZE)
 		calloc_mmap = 1;
 
 	void *ptr = os_malloc(total_size);
