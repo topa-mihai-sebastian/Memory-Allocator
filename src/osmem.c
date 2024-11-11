@@ -251,6 +251,7 @@ void *os_realloc(void *ptr, size_t size)
 		new_block->prev = NULL;
 		new_block->status = STATUS_MAPPED;
 		memcpy(new_block + 1, ptr, (block->size < size) ? block->size : size);
+		initialized = 1; 
 
 		int result = munmap(block, block->size + META_SIZE);
 		DIE(result == -1, "munmap");
