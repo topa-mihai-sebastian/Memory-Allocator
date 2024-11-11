@@ -49,6 +49,8 @@ void *find_free_block(struct block_meta **last, size_t size)
 		if (block_aux->status == STATUS_FREE && block_aux->next->status == STATUS_FREE) {
 			block_aux->size = block_aux->size + META_SIZE + block_aux->next->size;
 			block_aux->next = block_aux->next->next;
+			if (block_aux->next)
+				block_aux->next->prev = block_aux;
 		} else {
 			block_aux = block_aux->next;
 		}
@@ -223,7 +225,7 @@ void *os_realloc(void *ptr, size_t size)
 		return NULL;
 	}
 	size = ALIGN(size);
-	if (!ptr)
+	if (ptr == NULL)
 		return os_malloc(size);
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
