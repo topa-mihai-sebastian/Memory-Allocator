@@ -240,7 +240,7 @@ void *os_realloc(void *ptr, size_t size)
 		DIE(result == -1, "munmap");
 		return aux;
 	}
-	if(block->status == STATUS_MAPPED && size > PAGE_SIZE) {
+	if (block->status == STATUS_MAPPED && size > PAGE_SIZE) {
 		void *mmap_ptr = mmap(NULL, size + META_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 
 		DIE(mmap_ptr == MAP_FAILED, "mmap");
@@ -250,9 +250,10 @@ void *os_realloc(void *ptr, size_t size)
 		new_block->next = NULL;
 		new_block->prev = NULL;
 		new_block->status = STATUS_MAPPED;
-		initialized = 1; // sigabrt
-		int result = munmap(block, block->size + META_SIZE);
+		// Copiază datele din blocul vechi în noul bloc
+		memcpy(new_block + 1, ptr, (block->size < size) ? block->size : size);
 
+		int result = munmap(block, block->size + META_SIZE);
 		DIE(result == -1, "munmap");
 		return (new_block + 1);
 	}
