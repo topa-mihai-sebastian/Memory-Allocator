@@ -228,14 +228,14 @@ void *os_realloc(void *ptr, size_t size)
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
 
+	if(block->size == size)
+		return ptr;
 	struct block_meta *next = block->next;
 
 	if(block->status == STATUS_MAPPED && size < PAGE_SIZE) {
 		void *aux = os_malloc(size);
-		if (aux) {
+		if (aux)
 			memcpy(aux, ptr, (block->size < size) ? block->size : size);
-			os_free(ptr);
-		}
 		int result = munmap(block, block->size + META_SIZE);
 		DIE(result == -1, "munmap");
 		return aux;
@@ -250,7 +250,6 @@ void *os_realloc(void *ptr, size_t size)
 		new_block->next = NULL;
 		new_block->prev = NULL;
 		new_block->status = STATUS_MAPPED;
-		// Copiază datele din blocul vechi în noul bloc
 		memcpy(new_block + 1, ptr, (block->size < size) ? block->size : size);
 
 		int result = munmap(block, block->size + META_SIZE);
@@ -259,8 +258,6 @@ void *os_realloc(void *ptr, size_t size)
 	}
 	if (block->status == STATUS_FREE)
 		return NULL;
-	if(block->size == size)
-		return ptr;
 	if (block->size >= size + META_SIZE + 8) {
 		// truncate
 		split_block(block, size);
