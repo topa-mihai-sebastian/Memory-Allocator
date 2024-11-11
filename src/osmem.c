@@ -38,31 +38,6 @@ void preallocate_heap(void)
 	initialized = 1;
 }
 
-struct block_meta *expand_block(struct block_meta *block, size_t size)
-{
-    if (block == NULL || size <= 0)
-        return NULL;
-
-    // Coalesce blocurile libere adiacente
-    while (block->next && block->next->status == STATUS_FREE && block->size + META_SIZE + block->next->size < size) {
-        block->size += META_SIZE + block->next->size;
-        block->next = block->next->next;
-        if (block->next)
-            block->next->prev = block;
-    }
-
-    // Dacă blocul este încă prea mic, extinde-l folosind sbrk
-    if (block->size < size) {
-        size_t additional_size = size - block->size;
-        void *new_block = sbrk(additional_size);
-
-        DIE(new_block == (void *)-1, "sbrk");
-        block->size += additional_size;
-    }
-
-    return block;
-}
-
 void *find_free_block(struct block_meta **last, size_t size)
 {
 	struct block_meta *current = heap_base;
@@ -84,9 +59,6 @@ void *find_free_block(struct block_meta **last, size_t size)
 			break;
 		*last = current;
 		current = current->next;
-	}
-	if(current == NULL) {
-		return expand_block(*last, size);
 	}
 	return current;
 }
