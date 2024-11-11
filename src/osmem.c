@@ -53,6 +53,19 @@ void *find_free_block(struct block_meta **last, size_t size)
 			block_aux = block_aux->next;
 		}
 	}
+	// expend TODO
+	struct block_meta *aux = heap_base;
+
+	while (aux && aux->next)
+		aux = aux->next;
+	if (aux->size < size && aux->status == STATUS_FREE) {
+		size_t additional_size = size - aux->size;
+		void *degeaba = sbrk(additional_size);
+
+		DIE(degeaba == (void *)-1, "sbrk");
+		aux->size += additional_size;
+		aux->status = STATUS_ALLOC;
+	}
 	// find a good free block
 	while (current) {
 		if (current->status == STATUS_FREE && current->size >= size)
