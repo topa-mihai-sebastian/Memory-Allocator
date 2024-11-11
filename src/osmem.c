@@ -41,6 +41,7 @@ void preallocate_heap(void)
 void *find_free_block(struct block_meta **last, size_t size)
 {
 	struct block_meta *current = heap_base;
+
 	struct block_meta *block_aux = heap_base;
 
 	// coalesce
@@ -204,7 +205,7 @@ void *os_calloc(size_t nmemb, size_t size)
 
 	total_size = ALIGN(total_size);
 
-	if (total_size >= PAGE_SIZE)
+	if (total_size + META_SIZE >= PAGE_SIZE)
 		calloc_mmap = 1;
 
 	void *ptr = os_malloc(total_size);
