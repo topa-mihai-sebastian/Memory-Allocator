@@ -218,7 +218,7 @@ void *os_calloc(size_t nmemb, size_t size)
 
 void *os_realloc(void *ptr, size_t size)
 {
-	if (size <= 0) {
+	if (size == 0) {
 		os_free(ptr);
 		return NULL;
 	}
@@ -233,7 +233,7 @@ void *os_realloc(void *ptr, size_t size)
 	if(block->status == STATUS_MAPPED && size < PAGE_SIZE) {
 		void *aux = os_malloc(size);
 		if (aux) {
-			memcpy(aux, ptr, block->size);
+			memcpy(aux, ptr, (block->size < size) ? block->size : size);
 			os_free(ptr);
 		}
 		int result = munmap(block, block->size + META_SIZE);
@@ -251,7 +251,6 @@ void *os_realloc(void *ptr, size_t size)
 	}
 	// else ->
 	// incerc sa fac expend
-
 	while (next && next->status == STATUS_FREE && block->size + META_SIZE + next->size < size) {
 		block->size = block->size + META_SIZE + next->size;
 		block->next = next->next;
@@ -269,7 +268,7 @@ void *os_realloc(void *ptr, size_t size)
 	void *new_ptr = os_malloc(size);
 
 	if (new_ptr) {
-		memcpy(new_ptr, ptr, block->size);
+		memcpy(new_ptr, ptr, (block->size < size) ? block->size : size);
 		os_free(ptr);
 	}
 	return new_ptr;
