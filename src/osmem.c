@@ -144,7 +144,6 @@ void *os_malloc(size_t size)
 			calloc_mmap = 0;
 		return (block + 1);
 	}
-	//this part of the code
 	preallocate_heap();
 	if (heap_base == NULL)
 		return NULL;
@@ -284,7 +283,10 @@ void *os_realloc(void *ptr, size_t size)
 		if (block->next)
 			block->next->prev = block;
 		next = block->next;
-		}
+		// segfault aici :(
+		if(next == NULL)
+			break;
+	}
 	// daca s-a gasit fac alloc
 	if (block->size >= size && block != NULL) {
 		block->status = STATUS_ALLOC;
