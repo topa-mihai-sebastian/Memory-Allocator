@@ -138,9 +138,9 @@ void *os_malloc(size_t size)
 		block->next = NULL;
 		block->prev = NULL;
 		block->status = STATUS_MAPPED;
-		if(!initialized)
+		if (!initialized)
 			initialized = 1; // sigabrt
-		if(calloc_mmap == 1)
+		if (calloc_mmap == 1)
 			calloc_mmap = 0;
 		return (block + 1);
 	}
@@ -207,7 +207,8 @@ void *os_calloc(size_t nmemb, size_t size)
 	if (nmemb == 0 || size == 0)
 		return NULL;
 	size_t total_size;
-	if(nmemb == 1) {
+
+	if (nmemb == 1) {
 		total_size = nmemb * ALIGN(size);
 	} else {
 		total_size = nmemb * size;
@@ -236,15 +237,17 @@ void *os_realloc(void *ptr, size_t size)
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
 
-	if(block->size == size)
+	if (block->size == size)
 		return ptr;
 	struct block_meta *next = block->next;
 
-	if(block->status == STATUS_MAPPED && size < PAGE_SIZE) {
+	if (block->status == STATUS_MAPPED && size < PAGE_SIZE) {
 		void *aux = os_malloc(size);
+
 		if (aux)
 			memcpy(aux, ptr, (block->size < size) ? block->size : size);
 		int result = munmap(block, block->size + META_SIZE);
+
 		DIE(result == -1, "munmap");
 		return aux;
 	}
@@ -259,9 +262,10 @@ void *os_realloc(void *ptr, size_t size)
 		new_block->prev = NULL;
 		new_block->status = STATUS_MAPPED;
 		memcpy(new_block + 1, ptr, (block->size < size) ? block->size : size);
-		initialized = 1; 
+		initialized = 1;
 
 		int result = munmap(block, block->size + META_SIZE);
+
 		DIE(result == -1, "munmap");
 		return (new_block + 1);
 	}
@@ -282,7 +286,7 @@ void *os_realloc(void *ptr, size_t size)
 		next = block->next;
 		}
 	// daca s-a gasit fac alloc
-	if (block->size >= size) {
+	if (block->size >= size && block != NULL) {
 		block->status = STATUS_ALLOC;
 		return ptr;
 	}
