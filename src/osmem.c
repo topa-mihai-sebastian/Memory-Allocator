@@ -156,10 +156,9 @@ void *os_malloc(size_t size)
 
 		if (aux->size < size && aux->status == STATUS_FREE) {
 			size_t additional_size = size - aux->size;
-			struct block_meta *new_block = (struct block_meta *)sbrk(additional_size);
+			void *degeaba = sbrk(additional_size);
 
-			DIE(new_block == (void *)-1, "sbrk");
-
+			DIE(degeaba == (void *)-1, "sbrk");
 			aux->size += additional_size;
 			do_not_extend = 1;
 		}
