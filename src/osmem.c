@@ -228,9 +228,22 @@ void *os_realloc(void *ptr, size_t size)
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
 
+	struct block_meta *next = block->next;
+
+	if(block->status == STATUS_MAPPED && size < PAGE_SIZE) {
+		void *aux = os_malloc(size);
+		if (aux) {
+			memcpy(aux, ptr, block->size);
+			os_free(ptr);
+		}
+		int result = munmap(block, block->size + META_SIZE);
+		DIE(result == -1, "munmap");
+		return aux;
+	}
 	if (block->status == STATUS_FREE)
 		return NULL;
-
+	if(block->size == size)
+		return ptr;
 	if (block->size >= size + META_SIZE + 8) {
 		// truncate
 		split_block(block, size);
@@ -238,7 +251,6 @@ void *os_realloc(void *ptr, size_t size)
 	}
 	// else ->
 	// incerc sa fac expend
-	struct block_meta *next = block->next;
 
 	while (next && next->status == STATUS_FREE && block->size + META_SIZE + next->size < size) {
 		block->size = block->size + META_SIZE + next->size;
