@@ -77,6 +77,7 @@ void split_block(struct block_meta *block, size_t size)
 
 			new_block->size = block->size - size - META_SIZE;
 			new_block->prev = block;
+			// aici e singura diferenta
 			new_block->next = NULL;
 			new_block->status = STATUS_FREE;
 
@@ -284,7 +285,7 @@ void *os_realloc(void *ptr, size_t size)
 			block->next->prev = block;
 		next = block->next;
 		// segfault aici :(
-		if(next == NULL)
+		if (next == NULL)
 			break;
 	}
 	// daca s-a gasit fac alloc
