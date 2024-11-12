@@ -236,16 +236,12 @@ void *os_realloc(void *ptr, size_t size)
 		return os_malloc(size);
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
-
+	if (block->status == STATUS_FREE)
+		return NULL;
 	if (block->size == size)
 		return ptr;
 	struct block_meta *next = block->next;
-	if (block->size >= size && block->status == STATUS_ALLOC) {
-		// truncate
-		if (block->size >= size + META_SIZE + 8)
-			split_block(block, size);
-		return ptr;
-	}
+
 	if (block->status == STATUS_MAPPED && size < PAGE_SIZE) {
 		void *aux = os_malloc(size);
 
@@ -283,7 +279,7 @@ void *os_realloc(void *ptr, size_t size)
 	}
 	// else ->
 	// incerc sa fac expend
-	while (block && next && next->status == STATUS_FREE && block->size + META_SIZE + next->size <= size) {
+	while (next && next->status == STATUS_FREE && block->size + META_SIZE + next->size < size) {
 		block->size = block->size + META_SIZE + next->size;
 		block->next = next->next;
 		if (block->next)
@@ -291,8 +287,6 @@ void *os_realloc(void *ptr, size_t size)
 		next = block->next;
 		// segfault aici :(
 		if (next == NULL)
-			break;
-		if(block == NULL)
 			break;
 	}
 	// daca s-a gasit fac alloc
