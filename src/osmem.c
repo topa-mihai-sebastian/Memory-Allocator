@@ -236,6 +236,7 @@ void *os_realloc(void *ptr, size_t size)
 		return os_malloc(size);
 
 	struct block_meta *block = (struct block_meta *)ptr - 1;
+
 	if (block->status == STATUS_FREE)
 		return NULL;
 	if (block->size == size)
