@@ -9,7 +9,7 @@
 #include "block_meta.h"
 
 #define HEAP_SIZE (128 * 1024) // 128KB
-#define PAGE_SIZE (4 * 1024)   // 4kb
+#define PAGE_SIZE (4 * 1024)   // 4kb default
 #define META_SIZE sizeof(struct block_meta)
 #define MMAP_THRESHOLD (128 * 1024)
 #define ALIGNMENT 8
