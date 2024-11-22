@@ -8,6 +8,5 @@ int main(void)
 
 	ptr = os_malloc_checked(1986);
 	os_free(ptr);
-
 	return 0;
 }

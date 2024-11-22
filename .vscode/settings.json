@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+		"*.c": "c",
+		"stddef.h": "c",
+		"block_meta.h": "c",
+		"array": "c",
+		"string_view": "c",
+		"initializer_list": "c",
+		"utility": "c",
+		"osmem.h": "c"
+	},
+    "editor.formatOnSave": false
+}
